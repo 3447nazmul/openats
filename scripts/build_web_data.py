@@ -145,7 +145,7 @@ function analyze(resume, jd) {{
     language_warning: res.language_warning,
     stuffing_detected: res.stuffing_detected,
     stuffing_warning: res.stuffing_warning
-  }};' 
+  }};
 }}
 
 function recs(r) {{

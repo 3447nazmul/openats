@@ -365,6 +365,25 @@ class TestInternationalAndNonTechSupport(unittest.TestCase):
             "Visible warning must be present in recommendations"
         )
 
+        # Assertion (b): Normal paragraph resume with no bullets must NOT be flagged as stuffing and must score > 50%
+        alex_resume = "Alex Rivera is a Python developer with 5 years of experience building web applications with Docker and AWS. He has worked on cloud systems and led projects improving performance."
+        alex_jd = "Looking for Python Docker AWS engineer with cloud systems experience."
+        alex_res = analyze_ats_match(alex_resume, alex_jd)
+        self.assertFalse(alex_res["stuffing_detected"], "Normal paragraph resume with no bullets must NOT be flagged as stuffing")
+        self.assertIsNone(alex_res["stuffing_warning"])
+        self.assertGreater(alex_res["final_score"], 50.0, f"Normal paragraph resume should score above 50%, got {alex_res['final_score']}%")
+
+        # Assertion (c): Sample resume still scores 76.3% in CLI
+        import subprocess
+        cli_py = os.path.join(repo_root, "cli.py")
+        resume_path = os.path.join(repo_root, "sample_data", "sample_resume.txt")
+        jd_path = os.path.join(repo_root, "sample_data", "sample_job_desc.txt")
+        out = subprocess.check_output(
+            [sys.executable, cli_py, "--resume", resume_path, "--jd", jd_path],
+            universal_newlines=True
+        )
+        self.assertIn("76.3%", out, f"CLI must report 76.3% for sample resume. Output:\n{out}")
+
     def test_bengali_language_warning(self):
         """Regression Test for Item 2: Bengali input triggers warning and does not crash."""
         from openats.engine import analyze_ats_match

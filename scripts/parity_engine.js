@@ -489,43 +489,47 @@ function detectBengaliText(text) {
 }
 
 function detectKeywordStuffing(resumeText, matchedKeywords, structureAudit) {
+  if (!matchedKeywords || matchedKeywords.length === 0) return false;
+
   const tokens = cleanAndTokenize(resumeText);
   const totalTokens = tokens.length;
   if (totalTokens === 0) return false;
 
-  const totalBullets = structureAudit.total_bullets || 0;
-  const bulletsWithVerbs = structureAudit.bullets_with_action_verbs || 0;
-  const bulletsWithMetrics = structureAudit.bullets_with_metrics || 0;
-  const wordCount = structureAudit.word_count || totalTokens;
+  let wordCount = structureAudit.word_count || totalTokens;
+  if (wordCount === 0) wordCount = totalTokens;
 
-  const hasNarrative = (totalBullets > 0 && bulletsWithVerbs > 0);
-  const totalKwHits = (matchedKeywords || []).reduce((acc, m) => acc + (m.resume_count || 1), 0);
-
-  // 1. Matched keywords with almost no surrounding experience text
-  if (matchedKeywords && matchedKeywords.length > 0) {
-    if (totalBullets === 0 && bulletsWithVerbs === 0 && bulletsWithMetrics === 0) {
-      return true;
-    }
-    if (!hasNarrative && wordCount < 150) {
-      return true;
-    }
+  let totalKwWords = 0;
+  for (const m of matchedKeywords) {
+    const kwWords = (m.keyword || "").trim().split(/\s+/).filter(Boolean).length || 1;
+    totalKwWords += (m.resume_count || 1) * kwWords;
   }
 
-  // 2. Unnatural keyword repetition
   const tokenCounts = {};
   for (const t of tokens) {
     const tl = t.toLowerCase();
     tokenCounts[tl] = (tokenCounts[tl] || 0) + 1;
   }
-  for (const m of (matchedKeywords || [])) {
+
+  for (const m of matchedKeywords) {
     const kw = (m.keyword || "").toLowerCase();
-    const cnt = tokenCounts[kw] || 0;
+    const kwTokenLen = kw.trim().split(/\s+/).filter(Boolean).length || 1;
+    let cnt = m.resume_count || 0;
+    if (cnt === 0) {
+      cnt = tokenCounts[kw] || 0;
+    } else {
+      cnt = Math.max(cnt, tokenCounts[kw] || 0);
+    }
+
+    // 1. Same matched keyword repeated 6+ times in a short document (under 150 words)
     if (wordCount < 150 && cnt >= 6) return true;
-    if (totalTokens >= 20 && (cnt / totalTokens) > 0.20) return true;
+
+    // 2. One keyword making up more than 20% of all tokens
+    if (totalTokens > 0 && ((cnt * kwTokenLen) / totalTokens) > 0.20) return true;
   }
 
-  // 3. Overall keyword concentration without narrative (>40% of document is matched keywords)
-  if (totalTokens >= 15 && !hasNarrative && (totalKwHits / totalTokens) > 0.40) {
+  // 3. Matched keywords making up more than 40% of total words
+  const effectiveWords = Math.max(totalTokens, wordCount);
+  if (effectiveWords > 0 && (totalKwWords / effectiveWords) > 0.40) {
     return true;
   }
 

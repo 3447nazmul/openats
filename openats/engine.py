@@ -571,47 +571,51 @@ def _detect_keyword_stuffing(
     structure_audit: Dict[str, Any]
 ) -> bool:
     """
-    Detects unnatural keyword stuffing or resumes lacking surrounding narrative context.
-    Flags resumes where:
-      1. Matched keywords appear with almost no surrounding experience text
-         (very low word count, no bullets, no verbs, no metrics).
-      2. The same keyword/phrase repeats unnaturally across the document.
-      3. Matched keywords account for an abnormally high fraction of total words.
+    Detects unnatural keyword stuffing based strictly on keyword concentration.
+    Flags stuffing ONLY when keyword concentration is actually unnatural:
+      1. The same matched keyword repeated 6+ times in a short document (under 150 words).
+      2. One keyword making up more than 20% of all tokens.
+      3. Matched keywords making up more than 40% of total words.
     """
+    if not matched_keywords:
+        return False
+
     tokens = clean_and_tokenize(resume_text)
     total_tokens = len(tokens)
     if total_tokens == 0:
         return False
 
-    total_bullets = structure_audit.get("total_bullets", 0)
-    bullets_with_verbs = structure_audit.get("bullets_with_action_verbs", 0)
-    bullets_with_metrics = structure_audit.get("bullets_with_metrics", 0)
     word_count = structure_audit.get("word_count", total_tokens)
+    if word_count == 0:
+        word_count = total_tokens
 
-    has_narrative = (total_bullets > 0 and bullets_with_verbs > 0)
-    total_kw_hits = sum(m.get("resume_count", 1) for m in matched_keywords)
-
-    # 1. Matched keywords with almost no surrounding experience text
-    if matched_keywords:
-        if total_bullets == 0 and bullets_with_verbs == 0 and bullets_with_metrics == 0:
-            return True
-        if not has_narrative and word_count < 150:
-            return True
-
-    # 2. Unnatural keyword repetition
     token_counts = Counter(t.lower() for t in tokens)
+
+    total_kw_words = sum(
+        m.get("resume_count", 1) * max(1, len(m.get("keyword", "").split()))
+        for m in matched_keywords
+    )
+
     for m in matched_keywords:
         kw = m.get("keyword", "").lower()
-        cnt = token_counts.get(kw, 0)
-        # In a short document (under 150 words), repeating the same keyword 6+ times
+        kw_token_len = max(1, len(kw.split()))
+        cnt = m.get("resume_count", 0)
+        if cnt == 0:
+            cnt = token_counts.get(kw, 0)
+        else:
+            cnt = max(cnt, token_counts.get(kw, 0))
+
+        # 1. Same matched keyword repeated 6+ times in a short document (under 150 words)
         if word_count < 150 and cnt >= 6:
             return True
-        # In any document, if a single keyword makes up more than 20% of all tokens
-        if total_tokens >= 20 and (cnt / total_tokens) > 0.20:
+
+        # 2. One keyword making up more than 20% of all tokens
+        if total_tokens > 0 and ((cnt * kw_token_len) / total_tokens) > 0.20:
             return True
 
-    # 3. Overall keyword concentration without narrative (>40% of document is matched keywords)
-    if total_tokens >= 15 and not has_narrative and (total_kw_hits / total_tokens) > 0.40:
+    # 3. Matched keywords making up more than 40% of total words
+    effective_words = max(total_tokens, word_count)
+    if effective_words > 0 and (total_kw_words / effective_words) > 0.40:
         return True
 
     return False
