@@ -261,6 +261,22 @@ svg{display:block;vertical-align:middle}
  .bf,svg circle{-webkit-print-color-adjust:exact;print-color-adjust:exact}
  #results{padding-top:0!important}
 }
+
+/* Tailoring Studio Modal Layout (P2-2 UI Polish) */
+.tailor-panel{width:95%;max-width:1040px;height:88vh;max-height:820px;min-height:540px;display:flex;flex-direction:column;background:var(--elev)}
+.tailor-body{display:flex;flex-direction:column;gap:1.25rem;flex:1;min-height:0;overflow-y:auto;padding-right:.25rem}
+.tailor-col-editor{display:flex;flex-direction:column;flex:1;min-height:340px}
+.tailor-col-notes{display:flex;flex-direction:column;gap:.65rem;min-height:220px}
+#tailorResumeText{width:100%;flex:1;min-height:320px;resize:none;font-family:"JetBrains Mono",monospace;font-size:.8125rem;line-height:1.6}
+#tailorScratchText{width:100%;flex:1;min-height:160px;resize:none;font-family:"JetBrains Mono",monospace;font-size:.8125rem;line-height:1.5}
+@media (min-width:768px){
+ .tailor-body{display:grid;grid-template-columns:1.65fr 1fr;align-items:stretch;overflow:hidden}
+ .tailor-col-editor{min-height:420px}
+ .tailor-col-notes{min-height:420px}
+ #tailorResumeText{min-height:0;height:100%}
+ #tailorScratchText{min-height:0;height:100%}
+}
+
 </style>
 </head>
 <body class="min-h-screen">
@@ -460,7 +476,7 @@ svg{display:block;vertical-align:middle}
 </div>
 
 <div id="tailorModal" class="no-print fixed inset-0 z-40 hidden items-center justify-center bg-black/70 p-3 sm:p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="tailorTitle">
- <div class="panel w-full max-w-4xl p-4 sm:p-6 shadow-2xl flex flex-col max-h-[92vh]" style="background:var(--elev)">
+ <div class="panel tailor-panel p-4 sm:p-6 shadow-2xl">
   <div class="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
    <div class="flex items-center gap-3 flex-wrap">
     <h3 id="tailorTitle" class="text-lg font-semibold flex items-center gap-2"><span data-i="edit"></span>Resume Tailoring Workspace</h3>
@@ -469,9 +485,9 @@ svg{display:block;vertical-align:middle}
    <button id="tailorClose" class="btn btn-ghost" aria-label="Close tailoring workspace"><span data-i="x"></span></button>
   </div>
 
-  <div class="grid gap-4 lg:grid-cols-3 flex-1 overflow-y-auto pr-1 min-h-[360px]">
-   <!-- Left 2 cols: Resume Editor -->
-   <div class="lg:col-span-2 flex flex-col">
+  <div class="tailor-body">
+   <!-- Left Column: Resume Editor (Takes 62% on desktop, tall vertical height) -->
+   <div class="tailor-col-editor">
     <div class="mb-2 flex items-center justify-between">
      <label for="tailorResumeText" class="text-xs font-semibold uppercase tracking-wider text-mute">Resume content</label>
      <div class="flex items-center gap-2">
@@ -479,11 +495,11 @@ svg{display:block;vertical-align:middle}
       <button id="btnRestoreOriginal" class="btn btn-ghost text-xs text-mute hover:text-ink" style="padding:.2rem .5rem" title="Revert editor back to original unedited resume">Restore original</button>
      </div>
     </div>
-    <textarea id="tailorResumeText" class="w-full flex-1 min-h-[260px] resize-y rounded-lg border border-line bg-canvas p-3 font-mono text-xs text-ink outline-none focus:border-zinc-500 leading-relaxed" spellcheck="false" placeholder="Edit your resume here to incorporate missing skills..."></textarea>
+    <textarea id="tailorResumeText" class="rounded-lg border border-line bg-canvas p-3 font-mono text-xs text-ink outline-none focus:border-zinc-500 leading-relaxed" spellcheck="false" placeholder="Edit your resume here to incorporate missing skills..."></textarea>
    </div>
 
-   <!-- Right 1 col: Tailoring Notes & Scratchpad -->
-   <div class="flex flex-col gap-2.5">
+   <!-- Right Column: Tailoring Notes & Scratchpad (Takes 38% on desktop) -->
+   <div class="tailor-col-notes">
     <div class="flex items-center justify-between">
      <span class="text-xs font-semibold uppercase tracking-wider text-mute">Tailoring notes (Scratchpad)</span>
      <button id="btnClearScratch" class="btn btn-ghost text-xs text-mute" style="padding:.2rem .4rem">Clear</button>
@@ -492,7 +508,7 @@ svg{display:block;vertical-align:middle}
      ⚠️ <strong>Warning:</strong> Add a keyword to your resume only if you genuinely have that skill. Misrepresenting skills can cost you the job.
     </div>
     <p class="text-xs text-mute">Keywords you insert from the missing list appear below. Copy them into your bullets manually where accurate.</p>
-    <textarea id="tailorScratchText" class="w-full flex-1 min-h-[140px] resize-y rounded-lg border border-line bg-canvas p-3 font-mono text-xs text-ink outline-none focus:border-zinc-500 leading-relaxed" placeholder="Keywords you add will appear here for reference..."></textarea>
+    <textarea id="tailorScratchText" class="rounded-lg border border-line bg-canvas p-3 font-mono text-xs text-ink outline-none focus:border-zinc-500 leading-relaxed" placeholder="Keywords you add will appear here for reference..."></textarea>
    </div>
   </div>
 

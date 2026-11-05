@@ -28,7 +28,13 @@ class TestServer(unittest.TestCase):
         cls.server = ThreadingHTTPServer(("127.0.0.1", cls.port), OpenATSRequestHandler)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
-        time.sleep(0.3)
+        for _ in range(50):
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{cls.port}/api/health", timeout=1) as resp:
+                    if resp.status == 200:
+                        break
+            except Exception:
+                time.sleep(0.1)
 
     @classmethod
     def tearDownClass(cls):

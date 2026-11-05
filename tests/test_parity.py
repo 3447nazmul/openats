@@ -44,9 +44,12 @@ class TestCrossPlatformScoreParity(unittest.TestCase):
         parity_script = os.path.join(REPO_ROOT, "scripts", "parity_check.js")
         self.assertTrue(os.path.exists(parity_script), "scripts/parity_check.js missing")
 
+        env = os.environ.copy()
+        env["PYTHON"] = sys.executable
         proc = subprocess.run(
             [node_bin, parity_script],
             cwd=REPO_ROOT,
+            env=env,
             capture_output=True,
             text=True
         )

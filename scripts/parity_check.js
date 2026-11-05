@@ -26,17 +26,11 @@ const jd = fs.readFileSync(jdPath, 'utf8');
 const jsRes = analyzeATS(resume, jd);
 
 // 2. Calculate scores via Python engine
-const pyCmd = `python3 -c "
-import json
-from openats.engine import analyze_ats_match
-r = open('${resumePath}').read()
-j = open('${jdPath}').read()
-res = analyze_ats_match(r, j)
-print(json.dumps({
-  'final_score': res['final_score'],
-  'sub_scores': res['sub_scores']
-}))
-"`;
+const pyExec = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const safeRootDir = rootDir.replace(/\\/g, '/');
+const safeResume = resumePath.replace(/\\/g, '/');
+const safeJd = jdPath.replace(/\\/g, '/');
+const pyCmd = `"${pyExec}" -c "import sys, json; sys.path.insert(0, '${safeRootDir}'); from openats.engine import analyze_ats_match; r = open('${safeResume}', encoding='utf-8').read(); j = open('${safeJd}', encoding='utf-8').read(); res = analyze_ats_match(r, j); print(json.dumps({'final_score': res['final_score'], 'sub_scores': res['sub_scores']}))"`;
 
 let pyRes;
 try {
