@@ -132,6 +132,11 @@ def main(argv=None):
     print(f" • STAR Impact Metrics: {sub['measurable_impact']}%  (Weight: 10%)")
     print("=" * 65)
 
+    if result.get("stuffing_warning"):
+        print(f"\n🚨 WARNING: {result['stuffing_warning']}")
+    if result.get("language_warning"):
+        print(f"\n⚠️  NOTICE: {result['language_warning']}")
+
     print("\n🚨 Missing High-Priority Keywords:")
     if result["missing_keywords"]:
         for item in result["missing_keywords"][:8]:

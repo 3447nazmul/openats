@@ -1,5 +1,5 @@
 """
-OpenATS v3.0.0-Enterprise — Curated 1,000+ Multi-Discipline Skill Taxonomy
+OpenATS — Curated 1,000+ Multi-Discipline Skill Taxonomy
 Covers 8 technical domains with alias resolution and fuzzy matching support.
 Author: Nazmul (@3447nazmul) | Repository: https://github.com/3447nazmul/openats
 """

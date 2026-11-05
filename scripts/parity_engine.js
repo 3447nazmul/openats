@@ -289,7 +289,7 @@ function auditResumeStructure(resumeText, includeContact = false) {
 
   const lower = resumeText.toLowerCase();
   const emailMatch = resumeText.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
-  const phoneMatch = resumeText.match(/(?:(?:\+?880\s*[-.]?\s*|0)1[3-9]\d{2}[\s.\-]*\d{6}|(?:\+?44\s*[-.]?\s*|0)(?:\d{2,4}[\s.\-]*\d{3,4}[\s.\-]*\d{3,4})|(?:\+?91\s*[-.]?\s*)[6-9]\d{4}[\s.\-]*\d{5}|\+[1-9]\d{7,14}|(?:\+?1?\s*[-.]?\s*)?(?:\(?\d{3}\)?[\s.\-]*)\d{3}[\s.\-]*\d{4})/);
+  const phoneMatch = resumeText.match(/(?:(?:\+?880\s*[-.]?\s*|0)1[3-9]\d{2}[\s.\-]*\d{6}\b|(?:\+?44\s*[-.]?\s*|0)(?:\d{2,4}[\s.\-]*\d{3,4}[\s.\-]*\d{3,4})\b|(?:\+?91\s*[-.]?\s*)[6-9]\d{4}[\s.\-]*\d{5}\b|\+[1-9]\d{7,14}\b|(?:\+?1\s*[-.]?\s*)?(?:\(?\d{3}\)?[\s.\-]*)\d{3}[\s.\-]*\d{4}\b)/);
   const linkedinMatch = resumeText.match(/linkedin\.com\/in\/[\w\-]+/i);
   const githubMatch = resumeText.match(/github\.com\/[\w\-]+/i);
   const portfolioMatch = resumeText.match(/(?:portfolio|website|blog)\s*[:\|]?\s*(?:https?:\/\/)?[\w.\-]+\.\w{2,}/i);
@@ -391,7 +391,7 @@ function auditResumeStructure(resumeText, includeContact = false) {
   };
   if (includeContact) {
     out.email = emailMatch ? emailMatch[0] : null;
-    out.phone = phoneMatch ? phoneMatch[0] : null;
+    out.phone = phoneMatch ? phoneMatch[0].trim() : null;
   }
   return out;
 }
@@ -479,6 +479,57 @@ function generateRecommendations(finalScore, keywordScore, skillScore, impactSco
   }
 
   return recommendations.slice(0, 10);
+}
+
+function detectBengaliText(text) {
+  if (!text) return false;
+  const bengaliChars = (text.match(/[\u0980-\u09FF]/g) || []).length;
+  const totalLetters = (text.match(/[\p{L}]/gu) || []).length;
+  return (bengaliChars >= 15) && (bengaliChars / Math.max(totalLetters, 1) > 0.25);
+}
+
+function detectKeywordStuffing(resumeText, matchedKeywords, structureAudit) {
+  const tokens = cleanAndTokenize(resumeText);
+  const totalTokens = tokens.length;
+  if (totalTokens === 0) return false;
+
+  const totalBullets = structureAudit.total_bullets || 0;
+  const bulletsWithVerbs = structureAudit.bullets_with_action_verbs || 0;
+  const bulletsWithMetrics = structureAudit.bullets_with_metrics || 0;
+  const wordCount = structureAudit.word_count || totalTokens;
+
+  const hasNarrative = (totalBullets > 0 && bulletsWithVerbs > 0);
+  const totalKwHits = (matchedKeywords || []).reduce((acc, m) => acc + (m.resume_count || 1), 0);
+
+  // 1. Matched keywords with almost no surrounding experience text
+  if (matchedKeywords && matchedKeywords.length > 0) {
+    if (totalBullets === 0 && bulletsWithVerbs === 0 && bulletsWithMetrics === 0) {
+      return true;
+    }
+    if (!hasNarrative && wordCount < 150) {
+      return true;
+    }
+  }
+
+  // 2. Unnatural keyword repetition
+  const tokenCounts = {};
+  for (const t of tokens) {
+    const tl = t.toLowerCase();
+    tokenCounts[tl] = (tokenCounts[tl] || 0) + 1;
+  }
+  for (const m of (matchedKeywords || [])) {
+    const kw = (m.keyword || "").toLowerCase();
+    const cnt = tokenCounts[kw] || 0;
+    if (wordCount < 150 && cnt >= 6) return true;
+    if (totalTokens >= 20 && (cnt / totalTokens) > 0.20) return true;
+  }
+
+  // 3. Overall keyword concentration without narrative (>40% of document is matched keywords)
+  if (totalTokens >= 15 && !hasNarrative && (totalKwHits / totalTokens) > 0.40) {
+    return true;
+  }
+
+  return false;
 }
 
 function analyzeATS(resumeText, jobDescription, includeContact = false) {
@@ -632,6 +683,23 @@ function analyzeATS(resumeText, jobDescription, includeContact = false) {
   }
   impactScore = Math.min(impactScore, 100.0);
 
+  const isBengali = detectBengaliText(resumeText) || detectBengaliText(jobDescription);
+  const languageWarning = isBengali
+    ? "This resume appears to be in Bengali. The skill taxonomy is English-only, so this score is not reliable for Bengali text."
+    : null;
+
+  const stuffingDetected = detectKeywordStuffing(resumeText, finalMatched, structureAudit);
+  const stuffingWarning = stuffingDetected
+    ? "Keyword repetition detected - this looks like stuffing. Add real experience bullets using these skills."
+    : null;
+
+  if (stuffingDetected) {
+    keywordScore = Math.min(keywordScore, 30.0);
+    if (skillScore !== null) {
+      skillScore = Math.min(skillScore, 30.0);
+    }
+  }
+
   let finalScore = 0;
   if (skillScore !== null) {
     finalScore = parseFloat((
@@ -667,9 +735,20 @@ function analyzeATS(resumeText, jobDescription, includeContact = false) {
     totalB
   );
 
+  if (stuffingWarning) {
+    recommendations.unshift(`🚨 **${stuffingWarning}**`);
+  }
+  if (languageWarning) {
+    recommendations.unshift(`⚠️ **Notice:** ${languageWarning}`);
+  }
+
   return {
     final_score: finalScore,
     score_tier: scoreTier,
+    is_bengali: isBengali,
+    language_warning: languageWarning,
+    stuffing_detected: stuffingDetected,
+    stuffing_warning: stuffingWarning,
     sub_scores: {
       keyword_match: keywordScore,
       skill_match: skillScore,

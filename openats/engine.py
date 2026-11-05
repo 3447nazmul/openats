@@ -1,5 +1,5 @@
 """
-OpenATS v3.0.0-Enterprise — Core Semantic ATS Evaluation Engine.
+OpenATS — Core Semantic ATS Evaluation Engine.
 Performs advanced text preprocessing, n-gram extraction, semantic skill matching,
 multi-factor weighted scoring, section compliance audits, and STAR bullet scoring.
 
@@ -375,11 +375,11 @@ def audit_resume_structure(resume_text: str) -> Dict[str, Any]:
     )
     phone_match = re.search(
         r'(?:'
-        r'(?:\+?880\s*[-.]?\s*|0)1[3-9]\d{2}[\s.\-]*\d{6}'  # Bangladesh: +880 1XXX-XXXXXX or 01XXX-XXXXXX
-        r'|(?:\+?44\s*[-.]?\s*|0)(?:\d{2,4}[\s.\-]*\d{3,4}[\s.\-]*\d{3,4})'  # UK: +44 ...
-        r'|(?:\+?91\s*[-.]?\s*)[6-9]\d{4}[\s.\-]*\d{5}'  # India: +91 ...
-        r'|\+[1-9]\d{7,14}'  # Generic E.164 (+ followed by 8-15 digits)
-        r'|(?:\+?1?\s*[-.]?\s*)?(?:\(?\d{3}\)?[\s.\-]*)\d{3}[\s.\-]*\d{4}'  # North American
+        r'(?:\+?880\s*[-.]?\s*|0)1[3-9]\d{2}[\s.\-]*\d{6}\b'  # Bangladesh: +880 1XXX-XXXXXX or 01XXXXXXXXX
+        r'|(?:\+?44\s*[-.]?\s*|0)(?:\d{2,4}[\s.\-]*\d{3,4}[\s.\-]*\d{3,4})\b'  # UK: +44 ...
+        r'|(?:\+?91\s*[-.]?\s*)[6-9]\d{4}[\s.\-]*\d{5}\b'  # India: +91 ...
+        r'|\+[1-9]\d{7,14}\b'  # Generic E.164 (+ followed by 8-15 digits)
+        r'|(?:\+?1\s*[-.]?\s*)?(?:\(?\d{3}\)?[\s.\-]*)\d{3}[\s.\-]*\d{4}\b'  # North American: (555) 123-4567
         r')',
         resume_text
     )
@@ -540,7 +540,7 @@ def audit_resume_structure(resume_text: str) -> Dict[str, Any]:
         "has_phone": has_phone,
         "has_links": has_links,
         "email": email_match.group(0) if email_match else None,
-        "phone": phone_match.group(0) if phone_match else None,
+        "phone": phone_match.group(0).strip() if phone_match else None,
         "detected_sections": detected_sections,
         "missing_sections": missing_sections,
         "total_bullets": total_bullets,
@@ -555,6 +555,67 @@ def audit_resume_structure(resume_text: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Section 4: Multi-Factor Weighted Scoring (0–100%)
 # ---------------------------------------------------------------------------
+
+def _detect_bengali_text(text: str) -> bool:
+    """Detect if text is predominantly Bengali script."""
+    if not text:
+        return False
+    bengali_chars = len(re.findall(r'[\u0980-\u09FF]', text))
+    total_letters = len(re.findall(r'[^\W\d_]', text))
+    return (bengali_chars >= 15) and (bengali_chars / max(total_letters, 1) > 0.25)
+
+
+def _detect_keyword_stuffing(
+    resume_text: str,
+    matched_keywords: List[Dict[str, Any]],
+    structure_audit: Dict[str, Any]
+) -> bool:
+    """
+    Detects unnatural keyword stuffing or resumes lacking surrounding narrative context.
+    Flags resumes where:
+      1. Matched keywords appear with almost no surrounding experience text
+         (very low word count, no bullets, no verbs, no metrics).
+      2. The same keyword/phrase repeats unnaturally across the document.
+      3. Matched keywords account for an abnormally high fraction of total words.
+    """
+    tokens = clean_and_tokenize(resume_text)
+    total_tokens = len(tokens)
+    if total_tokens == 0:
+        return False
+
+    total_bullets = structure_audit.get("total_bullets", 0)
+    bullets_with_verbs = structure_audit.get("bullets_with_action_verbs", 0)
+    bullets_with_metrics = structure_audit.get("bullets_with_metrics", 0)
+    word_count = structure_audit.get("word_count", total_tokens)
+
+    has_narrative = (total_bullets > 0 and bullets_with_verbs > 0)
+    total_kw_hits = sum(m.get("resume_count", 1) for m in matched_keywords)
+
+    # 1. Matched keywords with almost no surrounding experience text
+    if matched_keywords:
+        if total_bullets == 0 and bullets_with_verbs == 0 and bullets_with_metrics == 0:
+            return True
+        if not has_narrative and word_count < 150:
+            return True
+
+    # 2. Unnatural keyword repetition
+    token_counts = Counter(t.lower() for t in tokens)
+    for m in matched_keywords:
+        kw = m.get("keyword", "").lower()
+        cnt = token_counts.get(kw, 0)
+        # In a short document (under 150 words), repeating the same keyword 6+ times
+        if word_count < 150 and cnt >= 6:
+            return True
+        # In any document, if a single keyword makes up more than 20% of all tokens
+        if total_tokens >= 20 and (cnt / total_tokens) > 0.20:
+            return True
+
+    # 3. Overall keyword concentration without narrative (>40% of document is matched keywords)
+    if total_tokens >= 15 and not has_narrative and (total_kw_hits / total_tokens) > 0.40:
+        return True
+
+    return False
+
 
 def analyze_ats_match(resume_text: str, job_description: str, include_contact: bool = False) -> Dict[str, Any]:
     """
@@ -711,6 +772,25 @@ def analyze_ats_match(resume_text: str, job_description: str, include_contact: b
         impact_score = 30.0
     impact_score = min(impact_score, 100.0)
 
+    # Bengali Language Check (Item 2)
+    is_bengali = _detect_bengali_text(resume_text) or _detect_bengali_text(job_description)
+    language_warning = (
+        "This resume appears to be in Bengali. The skill taxonomy is English-only, so this score is not reliable for Bengali text."
+        if is_bengali else None
+    )
+
+    # Keyword Stuffing Detection (Item 1)
+    stuffing_detected = _detect_keyword_stuffing(resume_text, matched_keywords, structure_audit)
+    stuffing_warning = (
+        "Keyword repetition detected - this looks like stuffing. Add real experience bullets using these skills."
+        if stuffing_detected else None
+    )
+
+    if stuffing_detected:
+        keyword_score = min(keyword_score, 30.0)
+        if skill_score is not None:
+            skill_score = min(skill_score, 30.0)
+
     # 5. Composite Final Score (Weighted Formula)
     if skill_score is not None:
         final_score = round(
@@ -753,9 +833,18 @@ def analyze_ats_match(resume_text: str, job_description: str, include_contact: b
         total_bullets=total_b,
     )
 
+    if stuffing_warning:
+        recommendations.insert(0, f"🚨 **{stuffing_warning}**")
+    if language_warning:
+        recommendations.insert(0, f"⚠️ **Notice:** {language_warning}")
+
     return {
         "final_score": final_score,
         "score_tier": score_tier,
+        "is_bengali": is_bengali,
+        "language_warning": language_warning,
+        "stuffing_detected": stuffing_detected,
+        "stuffing_warning": stuffing_warning,
         "sub_scores": {
             "keyword_match": keyword_score,
             "skill_match": skill_score,

@@ -140,8 +140,12 @@ function analyze(resume, jd) {{
       n: res.structure_audit.total_bullets
     }},
     total: res.final_score,
-    recs: formattedRecs
-  }};
+    recs: formattedRecs,
+    is_bengali: res.is_bengali,
+    language_warning: res.language_warning,
+    stuffing_detected: res.stuffing_detected,
+    stuffing_warning: res.stuffing_warning
+  }};' 
 }}
 
 function recs(r) {{

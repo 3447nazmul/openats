@@ -1,5 +1,5 @@
 """
-OpenATS v3.0.0-Enterprise — STAR Framework Bullet Point Enhancer
+OpenATS — STAR Framework Bullet Point Enhancer
 Transforms weak, passive resume bullets into high-impact, ATS-optimized achievements.
 Works 100% offline via algorithmic heuristics. Zero external API dependency.
 Author: Nazmul (@3447nazmul) | Repository: https://github.com/3447nazmul/openats

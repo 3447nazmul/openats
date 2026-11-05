@@ -236,12 +236,24 @@ class TestInternationalAndNonTechSupport(unittest.TestCase):
     """Section 5: P2-1 Regression Tests for International Formats & Non-Tech Disciplines."""
 
     def test_international_phone_formats(self):
-        """Verify Bangladesh (+880), UK (+44), India (+91), E.164, and US (555) phones are detected."""
+        """Verify Bangladesh (+880, local 01XXXXXXXXX without truncation), UK, India, E.164, and US."""
         from openats.engine import audit_resume_structure
 
-        # Bangladesh +880 format
-        res_bd = audit_resume_structure("Nazmul Hossain\nPhone: +880 1712-345678\nEmail: test@example.com")
-        self.assertTrue(res_bd["has_phone"], "+880 1712-345678 must set has_phone True")
+        # Bangladesh exact required formats from Item 3:
+        # 1. +8801712345678
+        res_bd1 = audit_resume_structure("Candidate Name\nPhone: +8801712345678\nEmail: test@example.com")
+        self.assertTrue(res_bd1["has_phone"])
+        self.assertEqual(res_bd1["phone"], "+8801712345678")
+
+        # 2. +880 1712-345678
+        res_bd2 = audit_resume_structure("Candidate Name\nPhone: +880 1712-345678\nEmail: test@example.com")
+        self.assertTrue(res_bd2["has_phone"])
+        self.assertEqual(res_bd2["phone"], "+880 1712-345678")
+
+        # 3. 01712345678 (must NOT be truncated to 10 digits!)
+        res_bd3 = audit_resume_structure("Candidate Name\nPhone: 01712345678\nEmail: test@example.com")
+        self.assertTrue(res_bd3["has_phone"])
+        self.assertEqual(res_bd3["phone"], "01712345678", "01712345678 must be captured as full 11 digits, not truncated")
 
         # UK +44 format
         res_uk = audit_resume_structure("John Smith\nTel: +44 20 7946 0912\nEmail: john@uk.co")
@@ -315,3 +327,71 @@ class TestInternationalAndNonTechSupport(unittest.TestCase):
         # Should be a real match percentage, not defaulted to 100% or None
         self.assertGreater(sub["skill_match"], 50.0)
         self.assertLessEqual(sub["skill_match"], 100.0)
+
+    def test_keyword_stuffing_detection(self):
+        """Regression Test for Item 1: Stuffed resume must score below real resume and trigger warning."""
+        from openats.engine import analyze_ats_match
+
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with open(os.path.join(repo_root, "sample_data", "sample_resume.txt")) as f:
+            real_resume = f.read()
+        with open(os.path.join(repo_root, "sample_data", "sample_job_desc.txt")) as f:
+            real_jd = f.read()
+
+        # Score real resume
+        real_res = analyze_ats_match(real_resume, real_jd)
+        self.assertEqual(real_res["final_score"], 76.3)
+        self.assertFalse(real_res["stuffing_detected"], "Normal resume must NOT be flagged as stuffing")
+        self.assertIsNone(real_res["stuffing_warning"])
+
+        # Stuffed resume: only repeated keywords ("Python Docker AWS" repeated)
+        short_jd = "Looking for Python Docker AWS engineer with Python Docker AWS experience"
+        stuffed_resume = "Python Docker AWS " * 20
+        stuffed_res = analyze_ats_match(stuffed_resume, short_jd)
+
+        # Assertion (a): Stuffed resume must score BELOW the real sample resume (76.3%)
+        self.assertTrue(stuffed_res["stuffing_detected"], "Stuffed resume must be flagged as stuffing")
+        self.assertLess(
+            stuffed_res["final_score"],
+            real_res["final_score"],
+            f"Stuffed score ({stuffed_res['final_score']}%) must be below real resume ({real_res['final_score']}%)"
+        )
+
+        # Assertion: Visible warning must be present
+        expected_warning = "Keyword repetition detected - this looks like stuffing. Add real experience bullets using these skills."
+        self.assertEqual(stuffed_res["stuffing_warning"], expected_warning)
+        self.assertTrue(
+            any(expected_warning in r for r in stuffed_res["recommendations"]),
+            "Visible warning must be present in recommendations"
+        )
+
+    def test_bengali_language_warning(self):
+        """Regression Test for Item 2: Bengali input triggers warning and does not crash."""
+        from openats.engine import analyze_ats_match
+
+        bengali_resume = """
+        নাজমুল হোসেন
+        ঢাকা, বাংলাদেশ
+        ফোন: ০১৭১২৩৪৫৬৭৮
+        ইমেইল: nazmul@example.com
+
+        অভিজ্ঞতা:
+        আমি একজন সফটওয়্যার ইঞ্জিনিয়ার। আমি গত ৫ বছর ধরে বিভিন্ন কোম্পানিতে কাজ করছি।
+        ওয়েব অ্যাপ্লিকেশন তৈরি করা, ডাটাবেস ডিজাইন করা এবং প্রজেক্ট ম্যানেজমেন্ট করা আমার মূল দায়িত্ব।
+
+        শিক্ষা:
+        কম্পিউটার সায়েন্সে স্নাতক
+        """
+
+        repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        with open(os.path.join(repo_root, "sample_data", "sample_job_desc.txt")) as f:
+            jd_text = f.read()
+
+        res = analyze_ats_match(bengali_resume, jd_text)
+        self.assertTrue(res["is_bengali"], "Bengali input must be detected as Bengali")
+        expected_warning = "This resume appears to be in Bengali. The skill taxonomy is English-only, so this score is not reliable for Bengali text."
+        self.assertEqual(res["language_warning"], expected_warning)
+        self.assertTrue(
+            any(expected_warning in r for r in res["recommendations"]),
+            "Bengali notice must be present in recommendations"
+        )
