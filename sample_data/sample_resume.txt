@@ -1,0 +1,31 @@
+Alex Rivera
+Email: alex.rivera@example.com | Phone: (555) 234-5678
+LinkedIn: linkedin.com/in/alexrivera-dev | GitHub: github.com/alexrivera
+
+PROFESSIONAL SUMMARY
+Results-driven Full Stack Software Engineer with 5+ years of experience building high-scale web applications, microservices, and distributed systems. Proven track record of improving application throughput, automating CI/CD pipelines, and delivering customer-centric cloud solutions.
+
+TECHNICAL SKILLS
+• Languages: Python, JavaScript, TypeScript, Go, SQL, HTML, CSS
+• Frameworks: React, Next.js, FastAPI, Node.js, Express, Django
+• Databases & Caching: PostgreSQL, Redis, MongoDB, MySQL
+• Cloud & DevOps: AWS (EC2, S3, Lambda), Docker, Kubernetes, GitHub Actions, Terraform
+• Practices: Agile, Scrum, TDD, RESTful API Design, Microservices, CI/CD
+
+WORK EXPERIENCE
+Senior Software Engineer | CloudScale Systems | 2022 – Present
+• Architected and deployed microservices backend using FastAPI and PostgreSQL, serving 12M+ monthly active users with 99.98% uptime.
+• Reduced API endpoint response times by 42% through strategic Redis caching and database indexing.
+• Spearheaded containerization of 15+ legacy monolith services using Docker and Kubernetes on AWS.
+• Automated deployment cycles with GitHub Actions CI/CD pipelines, cutting average deployment time from 45 minutes to 8 minutes.
+• Mentored 4 junior engineers on clean code architecture and test-driven development (TDD).
+
+Software Engineer | DevTech Innovations | 2020 – 2022
+• Developed reactive user interfaces using React, Next.js, and Tailwind CSS, increasing page engagement by 28%.
+• Engineered secure RESTful APIs using Node.js, Express, and PostgreSQL with OAuth 2.0 authentication.
+• Collaborated in an Agile Scrum team to deliver sprint goals ahead of schedule for 6 consecutive quarters.
+• Implemented automated unit and integration testing with Jest and PyTest, achieving 88% test coverage.
+
+EDUCATION
+Bachelor of Science in Computer Science
+State University of Technology | 2016 – 2020

@@ -1,0 +1,7 @@
+# OpenATS runs on the pure Python 3.8+ Standard Library by default!
+# Zero external packages are required to run the core engine, web dashboard, or .txt/.md/.docx CLI scans.
+#
+# Optional extras (defined in pyproject.toml):
+#   pip install "openats[pdf]"   -> installs pypdf>=4.0.0 for CLI PDF text extraction
+#   pip install "openats[docx]"  -> installs python-docx>=1.0.0 (stdlib fallback works without this)
+#   pip install "openats[all]"   -> installs both pypdf and python-docx

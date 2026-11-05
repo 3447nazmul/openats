@@ -1,0 +1,21 @@
+Senior Full Stack Engineer (Remote)
+Company: NextGen Cloud Solutions
+
+About the Role:
+We are seeking an experienced Senior Full Stack Engineer to build and scale our next-generation cloud infrastructure. You will work on distributed systems, modern web frontends, and automated CI/CD pipelines.
+
+Key Responsibilities:
+• Design, build, and maintain scalable microservices using Python (FastAPI or Django) and Node.js.
+• Develop responsive, performant user interfaces using TypeScript, React, and Next.js.
+• Optimize relational databases (PostgreSQL) and caching layers (Redis) for high concurrency and low latency.
+• Deploy and manage containerized workloads on AWS using Docker, Kubernetes (K8s), and Terraform.
+• Implement automated testing (PyTest, Jest) and continuous integration via GitHub Actions.
+• Participate in Agile sprint planning, peer code reviews, and mentor team members.
+
+Required Qualifications & Skills:
+• 4+ years of professional full-stack software development experience.
+• Strong proficiency in Python, TypeScript, and JavaScript.
+• Hands-on experience with React, Next.js, FastAPI, and PostgreSQL.
+• Solid understanding of cloud infrastructure on AWS, Docker, Kubernetes, and CI/CD pipelines.
+• Experience with Kafka, distributed systems, and GraphQL is a strong plus.
+• Excellent communication, leadership, and problem-solving skills.

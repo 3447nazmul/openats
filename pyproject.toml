@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openats"
+version = "1.0.0"
+authors = [
+  { name="Nazmul", email="nazmul@users.noreply.github.com" },
+]
+description = "High-performance, privacy-first open-source ATS resume matcher and optimizer (Free alternative to Jobscan)."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+dependencies = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing :: General",
+    "Topic :: Utilities",
+]
+keywords = ["ats", "resume", "cv", "job-search", "career", "keyword-matching", "jobscan-alternative"]
+
+[project.optional-dependencies]
+pdf = ["pypdf>=4.0.0"]
+docx = ["python-docx>=1.0.0"]
+all = ["pypdf>=4.0.0", "python-docx>=1.0.0"]
+
+[project.urls]
+"Homepage" = "https://3447nazmul.github.io/openats"
+"Repository" = "https://github.com/3447nazmul/openats"
+"Bug Tracker" = "https://github.com/3447nazmul/openats/issues"
+
+[project.scripts]
+openats = "openats.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["openats*"]
+exclude = ["sample_data*", "tests*"]

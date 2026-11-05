@@ -1,0 +1,51 @@
+name: Deploy OpenATS to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and stage static web assets
+        run: |
+          mkdir -p site
+          # Copy standalone web dashboard and template files only
+          cp index.html site/
+          if [ -d openats/templates ]; then
+            cp -r openats/templates/* site/ 2>/dev/null || true
+          fi
+          if [ -d vendor ]; then
+            cp -r vendor site/ 2>/dev/null || true
+          fi
+          # Ensure python source, test files, workflows, and server code are strictly excluded
+          rm -rf site/*.py site/tests site/.github site/sample_data site/build site/openats.egg-info
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
